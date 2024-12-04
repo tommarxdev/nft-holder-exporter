@@ -1,0 +1,26 @@
+{
+  "name": "nft_holder_exporter",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node get_nft_owners_by_id.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "async": "^3.2.6",
+    "axios": "^1.7.9",
+    "cli-progress": "^3.12.0",
+    "csv-writer": "^1.6.0",
+    "dotenv": "^16.4.7",
+    "ethers": "^6.13.4",
+    "fs": "^0.0.1-security",
+    "p-limit": "^6.1.0",
+    "retry": "^0.13.1",
+    "web3": "^4.16.0"
+  }
+}
