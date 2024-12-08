@@ -1,3 +1,4 @@
+// get_nft_holders_web3.mjs
 
 import { ethers } from 'ethers';
 import fs from 'fs';
@@ -45,16 +46,19 @@ if (!fs.existsSync('nft_holders.csv') || fs.statSync('nft_holders.csv').size ===
 // Initialize Error Log Stream
 const errorLogStream = fs.createWriteStream('error.log', { flags: 'a' });
 
-// Function to fetch owners from token ID 1 to 1000
+// Function to fetch owners from token ID 1001 to 2000
 async function fetchOwnersInRange() {
   try {
     const startTokenId = 1001;
     const endTokenId = 2000;
+    const batchSize = 5; // Adjust this to handle rate limits
 
-    const batchSize = 5; // Reduced batch size to handle rate limits
-    const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
     const total = endTokenId - startTokenId + 1;
+    const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
     progressBar.start(total, 0);
+
+    // Store all results here
+    const results = [];
 
     for (let i = startTokenId; i <= endTokenId; i += batchSize) {
       const batchEnd = Math.min(i + batchSize - 1, endTokenId);
@@ -73,10 +77,10 @@ async function fetchOwnersInRange() {
             operation.attempt(async () => {
               try {
                 const owner = await contract.ownerOf(j);
-                // Write to CSV immediately
-                await csvWriter.writeRecords([[owner, j]]);
-                resolve();
+                // Instead of writing immediately, store result in memory
+                results.push([owner, j]);
                 progressBar.increment();
+                resolve();
               } catch (error) {
                 if (error.code === 'CALL_EXCEPTION' && error.reason && error.reason.includes('invalid token ID')) {
                   // Token ID does not exist
@@ -84,7 +88,7 @@ async function fetchOwnersInRange() {
                   progressBar.increment();
                   resolve();
                 } else if (operation.retry(error)) {
-                  return;
+                  return; // Retry on transient errors
                 } else {
                   console.error(`Failed to fetch owner for token ID ${j}:`, error.message);
                   errorLogStream.write(`Error fetching owner for token ID ${j}: ${error.message}\n`);
@@ -98,11 +102,18 @@ async function fetchOwnersInRange() {
       }
 
       await Promise.all(batchPromises);
-      // Introduce a delay between batches
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Introduce a delay between batches to avoid rate limits
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
 
     progressBar.stop();
+
+    // Sort results by token ID (the second element in each array)
+    results.sort((a, b) => a[1] - b[1]);
+
+    // Now write all sorted results to the CSV file at once
+    await csvWriter.writeRecords(results);
+
   } catch (error) {
     console.error('Error fetching owners:', error.message);
     throw error;
@@ -123,3 +134,5 @@ async function main() {
 
 // Execute the main function
 main();
+
+// -node get_nft_owners_by_id.mjs
